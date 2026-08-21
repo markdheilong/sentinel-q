@@ -1,0 +1,18 @@
+{
+  "name": "example",
+  "version": "0.1.0",
+  "source": "ILLUSTRATIVE ONLY - not a measured calibration. Band boundaries here are arbitrary and cite nothing.",
+  "note": "Ships with the repository so every test and the full demo run out of the box. A production calibration is supplied via the SENTINELQ_CALIBRATION environment variable and is never committed. See calibration/README.md.",
+  "threshold": 0.6,
+  "points": [
+    { "label": "p0", "stroke_in": 0.0, "band": "GREEN",  "note": "at rest, brake not applied" },
+    { "label": "p1", "stroke_in": 0.5, "band": "GREEN" },
+    { "label": "p2", "stroke_in": 1.0, "band": "GREEN" },
+    { "label": "p3", "stroke_in": 1.5, "band": "GREEN" },
+    { "label": "p4", "stroke_in": 2.0, "band": "GREEN" },
+    { "label": "p5", "stroke_in": 2.5, "band": "YELLOW", "note": "illustrative readjustment point" },
+    { "label": "p6", "stroke_in": 3.0, "band": "RED" },
+    { "label": "p7", "stroke_in": 3.5, "band": "RED" },
+    { "label": "p8", "stroke_in": 4.0, "band": "RED" }
+  ]
+}

@@ -1,0 +1,38 @@
+# --- Proprietary: never commit -------------------------------------------
+# Production sensor calibrations. Only the illustrative example is tracked.
+calibration/*.calibration.json
+!calibration/example.calibration.json
+
+# Sensor protocol details beyond the public start/stop command
+secrets/
+*.private.json
+*.private.md
+
+# Captured inference output and datasets
+data/
+*.csv
+*.edgeimpulse
+*.eim
+
+# Scratch: files staged for manual deletion (the device bridge cannot delete)
+_to_delete/
+
+# --- Runtime --------------------------------------------------------------
+*.sqlite
+*.db
+*.log
+
+# --- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.coverage
+
+# --- Editors / OS ---------------------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,20 @@
+# Normalise line endings.
+#
+# Without this, Windows checks out CRLF and Linux checks out LF, so the same
+# file has different bytes on different machines and every diff is noise. This
+# code is edited on Windows and RUNS on the UNO Q's Debian side, so it crosses
+# that boundary constantly.
+#
+# `text=auto eol=lf` stores LF in the repository and checks out LF everywhere.
+# VS Code, Python and the Arduino toolchain all handle LF on Windows without
+# complaint.
+
+* text=auto eol=lf
+
+# Binary formats git must never try to normalise.
+*.png  binary
+*.jpg  binary
+*.gif  binary
+*.pdf  binary
+*.zip  binary
+*.eim  binary

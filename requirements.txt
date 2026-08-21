@@ -1,0 +1,11 @@
+# Runtime dependencies for the Sentinel-Q gateway.
+#
+# The gateway core has NONE. Identity, enrollment, the supervisory layer, the
+# ledger, the display and the driver procedure are pure standard library --
+# sqlite3, hashlib, json, asyncio, dataclasses. That is deliberate: the fewer
+# moving parts on a device doing a safety-relevant job, the better.
+#
+# The single dependency below is needed only to talk to real hardware.
+
+bleak>=0.22          # BLE central. Host Debian side of the UNO Q only --
+                     # App Lab's container has no D-Bus/BlueZ access.
