@@ -166,6 +166,9 @@ class BleakSession(SensorSession):
         self._client = client
         self._queue: asyncio.Queue[bytes] = asyncio.Queue()
         self._subscribed = False
+        #: Frames received that were not classifications. Populated by
+        #: read_result and surfaced in diagnostics; see that method.
+        self.skipped: list[bytes] = []
 
     async def _subscribe(self) -> None:
         if self._subscribed:
@@ -195,13 +198,52 @@ class BleakSession(SensorSession):
         )
 
     async def read_result(self, timeout: float = 5.0) -> InferenceResult:
-        try:
-            payload = await asyncio.wait_for(self._queue.get(), timeout=timeout)
-        except asyncio.TimeoutError:
-            raise SensorTimeout(
-                f"{self.sensor_uuid}: no inference output within {timeout}s"
-            ) from None
-        return parse_result(payload)
+        """Wait for the next frame that is actually a classification.
+
+        The notify characteristic is not exclusively a results channel. The
+        firmware emits a short status frame when inference starts -- one byte,
+        observed against real hardware 13 Sep 2026 -- and taking the first
+        notification blindly meant parsing that acknowledgement as a class name
+        and failing.
+
+        So we drain frames until one parses, bounded by the caller's timeout
+        rather than by a frame count: a sensor that only ever emitted status
+        bytes would otherwise loop until something else stopped it. Frames we
+        skip are remembered and reported if we time out, because "three 1-byte
+        frames arrived and none was a label" is a far better diagnostic than
+        silence.
+        """
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + timeout
+        self.skipped: list[bytes] = []
+
+        while True:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                break
+            try:
+                payload = await asyncio.wait_for(
+                    self._queue.get(), timeout=remaining
+                )
+            except asyncio.TimeoutError:
+                break
+
+            try:
+                return parse_result(payload)
+            except ValueError:
+                # Not a classification. Keep it for the diagnostic and wait for
+                # the next one.
+                self.skipped.append(payload)
+
+        detail = (
+            f"; {len(self.skipped)} non-result frame(s) seen "
+            f"({', '.join(f'{len(f)}B' for f in self.skipped[:4])})"
+            if self.skipped
+            else ""
+        )
+        raise SensorTimeout(
+            f"{self.sensor_uuid}: no inference output within {timeout}s{detail}"
+        )
 
     async def stop_inference(self) -> None:
         try:
