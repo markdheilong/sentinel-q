@@ -17,6 +17,9 @@ data/
 # Scratch: files staged for manual deletion (the device bridge cannot delete)
 _to_delete/
 
+# Local planning documents — internal, not part of the submission
+planning/
+
 # --- Runtime --------------------------------------------------------------
 *.sqlite
 *.db

@@ -54,6 +54,11 @@ def tracked_files() -> list[Path]:
         if path.parent.name == "calibration" and path.name.endswith(".calibration.json"):
             if path.name != EXAMPLE_CALIBRATION.name:
                 continue
+        # Runtime sensor profiles are gitignored by the *.private.json pattern
+        # and legitimately contain the wire details. Scanning them would fail
+        # the build for a file that is doing exactly what it should.
+        if path.name.endswith(".private.json"):
+            continue
         out.append(path)
     return out
 
@@ -159,4 +164,51 @@ def test_demonstration_records_stay_marked_as_demonstrations():
         assert not re.search(r"\bUSDOT\s*[#:]?\s*\d", text, re.I), f"DOT number in {path}"
         assert not re.search(r"\b[A-HJ-NPR-Z0-9]{17}\b", text) or path.suffix == ".json", (
             f"possible VIN in {path}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# The runtime sensor profile
+#
+# Added 13 Sep 2026, the day the real GATT table was enumerated. The notify
+# characteristic became a known value that afternoon, which is exactly the
+# moment a project is most likely to paste it somewhere permanent.
+# ---------------------------------------------------------------------------
+
+
+def test_private_profiles_are_gitignored():
+    """The ignore pattern that keeps a sensor profile out of history must exist.
+
+    Excluding these files from the scan above is only safe if git is also
+    excluding them from commits. If someone tidies the .gitignore, this fails.
+    """
+    ignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert "*.private.json" in ignore, (
+        "The *.private.json ignore pattern is gone. A sensor profile dropped "
+        "into the tree could now be committed."
+    )
+
+
+def test_result_characteristic_is_absent_without_a_profile(monkeypatch):
+    """With nothing supplied, the gateway must resolve to no result path.
+
+    Not merely 'the constant is None' — the resolved value the backend actually
+    subscribes to. A default that silently pointed anywhere real would be a
+    disclosure failure that the constant check alone would not catch.
+    """
+    monkeypatch.delenv("SENTINELQ_RESULT_CHAR", raising=False)
+    monkeypatch.delenv("SENTINELQ_SENSOR_PROFILE", raising=False)
+
+    from sentinelq.profile import SensorProfile
+
+    profile = SensorProfile.load()
+    if profile.source == "none":
+        assert profile.result_char_uuid is None
+        assert not profile.is_configured
+    else:
+        # A profile exists on this machine (a developer bench). That is fine —
+        # but it must have come from a gitignored file, never from the tree.
+        assert profile.source.endswith(".private.json"), (
+            f"Sensor profile loaded from {profile.source!r}, which is not a "
+            f"gitignored *.private.json file."
         )

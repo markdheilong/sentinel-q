@@ -32,6 +32,15 @@ class InferenceResult:
     classification_ms: Optional[int] = None
     raw: dict = field(default_factory=dict)
 
+    #: True when the sensor reported a decision with no probability attached.
+    #:
+    #: Some firmware sends the winning class name alone. There is then no
+    #: distribution to reason over: `scores` holds a single entry at 1.0, which
+    #: records what the device said, not a measured certainty. Anything that
+    #: interprets confidence must check this first, because "1.0" from a
+    #: decision-only sensor means "it did not tell us" and not "it was sure".
+    decision_only: bool = False
+
     @property
     def top_label(self) -> Optional[str]:
         return max(self.scores, key=self.scores.get) if self.scores else None

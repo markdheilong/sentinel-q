@@ -7,5 +7,14 @@
 #
 # The single dependency below is needed only to talk to real hardware.
 
-bleak>=0.22          # BLE central. Host Debian side of the UNO Q only --
+bleak>=3.0,<4        # BLE central. Host Debian side of the UNO Q only --
                      # App Lab's container has no D-Bus/BlueZ access.
+                     #
+                     # Pinned to the 3.x line, verified against 3.0.2 on the
+                     # board. 3.0 changed enough to matter: connect() and
+                     # disconnect() now return None, BLEDevice.rssi is
+                     # deprecated in favour of AdvertisementData.rssi, and
+                     # BleakScanner.discover() is deprecated in favour of the
+                     # async context manager. Allowing 0.x here would let a
+                     # fresh install resolve to an API this code no longer
+                     # speaks.
