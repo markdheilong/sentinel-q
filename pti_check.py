@@ -116,6 +116,61 @@ def render(assessment, registry: Registry, address: str, rssi_note: str = "") ->
     print()
 
 
+#: Fixed-width so the verdict column does not jitter as readings change.
+WATCH_WIDTH = max(len(text) for text, _ in DRIVER_TEXT.values())
+
+
+async def watch(address: str, interval: float = 0.6) -> int:
+    """Hold the link open and report every reading as it arrives.
+
+    One connection, one start-inference, then read continuously. Reconnecting
+    per reading would cost two to four seconds each time and make the display
+    lag the pushrod badly enough to look broken.
+
+    This is what the sweep does during the ten-second hold, with one wheel end
+    instead of ten. Move the pushrod and the verdict follows it.
+    """
+    backend = BleakBackend()
+
+    print(f"\n  watching {address} — move the pushrod, Ctrl+C to stop")
+    if CALIBRATION.is_example:
+        print(f"  calibration '{CALIBRATION.name} {CALIBRATION.version}' "
+              f"— ILLUSTRATIVE, figures are arbitrary")
+    print(RULE)
+
+    try:
+        async with backend.connect(address) as session:
+            await session.start_inference()
+            n = 0
+            while True:
+                try:
+                    reading = await session.read_result(timeout=5.0)
+                except SensorTimeout:
+                    print("  …no reading")
+                    continue
+
+                a = assess(reading.scores, phase=Phase.APPLIED)
+                headline, _ = DRIVER_TEXT[a.verdict]
+                stroke = (
+                    f'{a.stroke_in:>4.2f} in' if a.stroke_in is not None else "   —   "
+                )
+                band = a.band.value if a.band else "—"
+                n += 1
+                print(
+                    f"  {n:>3}  {a.resolved_label or '—':<4} "
+                    f"{stroke}  {band:<6}  {headline:<{WATCH_WIDTH}}"
+                )
+                await asyncio.sleep(interval)
+    except SensorUnavailable as exc:
+        print(f"\n  NOT REACHED — {exc}\n")
+        return 1
+    except KeyboardInterrupt:
+        print(RULE)
+        print("  stopped\n")
+        return 0
+    return 0
+
+
 async def main(address: str) -> int:
     if result_char_uuid() is None:
         print("\n  No result characteristic configured — see config/README.md\n")
@@ -151,8 +206,19 @@ async def main(address: str) -> int:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
+    args = [a for a in sys.argv[1:] if a != "--watch"]
+    watching = "--watch" in sys.argv
+
+    if len(args) != 1:
         print(__doc__)
-        print(f"usage: {sys.argv[0]} <sensor-ble-address>")
+        print(f"usage: {sys.argv[0]} <sensor-ble-address> [--watch]")
+        print()
+        print("  --watch   hold the link open and report every reading, so the")
+        print("            verdict follows the pushrod in real time")
         raise SystemExit(64)
-    raise SystemExit(asyncio.run(main(sys.argv[1])))
+
+    try:
+        raise SystemExit(asyncio.run(watch(args[0]) if watching else main(args[0])))
+    except KeyboardInterrupt:
+        print()
+        raise SystemExit(0)
